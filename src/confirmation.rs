@@ -1,4 +1,5 @@
 use crate::delete;
+use crate::lang::Language;
 use crate::logger;
 use crate::stats::Stats;
 use crate::stats_logger::StatsLogger;
@@ -10,10 +11,11 @@ pub fn show_confirmation(
     ctx: &egui::Context,
     message: &str,
     status: &Option<String>,
+    language: Language,
 ) -> Option<bool> {
     let mut result = None;
 
-    egui::Window::new("确认操作")
+    egui::Window::new(if language.is_chinese() { "确认操作" } else { "Confirm action" })
         .collapsible(false)
         .resizable(false)
         .show(ctx, |ui| {
@@ -25,10 +27,10 @@ pub fn show_confirmation(
             }
 
             ui.horizontal(|ui| {
-                if ui.button("确认").clicked() {
+                if ui.button(if language.is_chinese() { "确认" } else { "Confirm" }).clicked() {
                     result = Some(true);
                 }
-                if ui.button("取消").clicked() {
+                if ui.button(if language.is_chinese() { "取消" } else { "Cancel" }).clicked() {
                     result = Some(false);
                     println!("用户取消操作");
                 }
@@ -48,15 +50,25 @@ pub fn handle_delete_confirmation(
     stats: &mut Stats,                      // 新增参数
     stats_logger: &StatsLogger,             // 新增参数
     db: &crate::database::Database,         // 新增参数
+    language: Language,
 ) {
+    let is_zh = language.is_chinese();
     if let Some((folder_name, is_bulk)) = confirm_delete.clone() {
         let message = if is_bulk && folder_name == "BULK_DELETE" {
-            "确定要批量删除选中的文件夹吗？".to_string()
+            if is_zh {
+                "确定要批量删除选中的文件夹吗？".to_string()
+            } else {
+                "Are you sure you want to batch delete the selected folders?".to_string()
+            }
         } else {
-            format!("确定要彻底删除文件夹 {} 吗？", folder_name)
+            if is_zh {
+                format!("确定要彻底删除文件夹 {} 吗？", folder_name)
+            } else {
+                format!("Are you sure you want to permanently delete folder {}?", folder_name)
+            }
         };
 
-        if let Some(confirm) = show_confirmation(ctx, &message, status) {
+        if let Some(confirm) = show_confirmation(ctx, &message, status, language) {
             if confirm {
                 if is_bulk && folder_name == "BULK_DELETE" {
                     for folder in selected_folders.iter() {
@@ -72,7 +84,11 @@ pub fn handle_delete_confirmation(
                     }
                     folder_data.retain(|(folder, _)| !selected_folders.contains(folder)); // 从数据中移除已删除的文件夹
                     selected_folders.clear(); // 清空选定文件夹列表
-                    *status = Some("批量删除完成".to_string());
+                    *status = Some(if is_zh {
+                        "批量删除完成".to_string()
+                    } else {
+                        "Batch deletion completed".to_string()
+                    });
                 } else {
                     if let Some(base_path) = utils::get_appdata_dir(selected_appdata_folder) {
                         let full_path = base_path.join(&folder_name);
@@ -82,7 +98,11 @@ pub fn handle_delete_confirmation(
                             logger::log_info(&format!("已删除文件夹: {}", folder_name));
                             folder_data.retain(|(folder, _)| folder != &folder_name);
                         }
-                        *status = Some(format!("文件夹 {} 已成功删除", folder_name));
+                        *status = Some(if is_zh {
+                            format!("文件夹 {} 已成功删除", folder_name)
+                        } else {
+                            format!("Folder {} deleted successfully", folder_name)
+                        });
                     }
                 }
             }

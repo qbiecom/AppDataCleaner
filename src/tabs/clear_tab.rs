@@ -1,5 +1,6 @@
 use crate::confirmation::show_confirmation;
 use crate::database::{Database, get_default_db_path, database_exists};
+use crate::lang::Language;
 use crate::stats::Stats;
 use crate::stats_logger::StatsLogger;
 use crate::yaml_loader::{load_folder_descriptions, FolderDescriptions};
@@ -110,7 +111,7 @@ impl Default for ClearTabState {
 
 impl ClearTabState {
     // 新增：实现 handle_folder_operations 方法
-    fn handle_folder_operations(&mut self, ui: &mut egui::Ui, folder: &str, size: u64) {
+    fn handle_folder_operations(&mut self, ui: &mut egui::Ui, folder: &str, size: u64, language: Language) {
         // 显示复选框，用于多选操作
         let mut is_selected = self.selected_folders.contains(folder);
         if ui.checkbox(&mut is_selected, "").clicked() {
@@ -133,10 +134,10 @@ impl ClearTabState {
         ui.label(utils::format_size(size));
 
         // 显示描述
-        self.show_folder_description(ui, folder);
+        self.show_folder_description(ui, folder, language);
 
         // 显示操作按钮
-        self.show_folder_actions(ui, folder);
+        self.show_folder_actions(ui, folder, language);
     }
     pub fn new() -> Self {
         let db_path = get_default_db_path();
@@ -171,11 +172,17 @@ impl ClearTabState {
         stats: &mut Stats,                    // 新增参数
         stats_logger: &StatsLogger,           // 新增参数
         db: &Database,                        // 新增参数
+        language: Language,
     ) {
+        let is_zh = language.is_chinese();
         if let Some((folder_name, is_bulk)) = confirm_delete.clone() {
             if is_bulk && folder_name == "BULK_DELETE" {
-                let message = "确定要批量删除选中的文件夹吗？";
-                if let Some(confirm) = show_confirmation(ctx, message, status) {
+                let message = if is_zh {
+                    "确定要批量删除选中的文件夹吗？"
+                } else {
+                    "Are you sure you want to batch delete selected folders?"
+                };
+                if let Some(confirm) = show_confirmation(ctx, message, status, language) {
                     if confirm {
                         let selected_folders: Vec<String> = folder_data
                             .iter()
@@ -197,13 +204,21 @@ impl ClearTabState {
                             }
                         }
                         folder_data.retain(|(folder, _)| !selected_folders.contains(folder));
-                        *status = Some("批量删除完成".to_string());
+                        *status = Some(if is_zh {
+                            "批量删除完成".to_string()
+                        } else {
+                            "Batch deletion completed".to_string()
+                        });
                     }
                     *confirm_delete = None;
                 }
             } else {
-                let message = format!("确定要彻底删除文件夹 {} 吗？", folder_name);
-                if let Some(confirm) = show_confirmation(ctx, &message, status) {
+                let message = if is_zh {
+                    format!("确定要彻底删除文件夹 {} 吗？", folder_name)
+                } else {
+                    format!("Are you sure you want to permanently delete folder {}?", folder_name)
+                };
+                if let Some(confirm) = show_confirmation(ctx, &message, status, language) {
                     if confirm {
                         if let Some(base_path) = utils::get_appdata_dir(selected_appdata_folder) {
                             let full_path = base_path.join(&folder_name);
@@ -214,7 +229,11 @@ impl ClearTabState {
                                 logger::log_info(&format!("已删除文件夹: {}", folder_name));
                                 folder_data.retain(|(folder, _)| folder != &folder_name);
                             }
-                            *status = Some(format!("文件夹 {} 已成功删除", folder_name));
+                            *status = Some(if is_zh {
+                                format!("文件夹 {} 已成功删除", folder_name)
+                            } else {
+                                format!("Folder {} deleted successfully", folder_name)
+                            });
                         }
                     }
                     *confirm_delete = None;
@@ -223,7 +242,7 @@ impl ClearTabState {
         }
     }
 
-    fn show_folder_description(&self, ui: &mut egui::Ui, folder: &str) {
+    fn show_folder_description(&self, ui: &mut egui::Ui, folder: &str, language: Language) {
         let description = self
             .folder_descriptions
             .as_ref()
@@ -231,37 +250,38 @@ impl ClearTabState {
 
         match description {
             Some(desc) => ui.label(desc),
-            None => ui.label("无描述"),
+            None => ui.label(if language.is_chinese() { "无描述" } else { "No description" }),
         };
     }
 
-    fn show_folder_actions(&mut self, ui: &mut egui::Ui, folder: &str) {
+    fn show_folder_actions(&mut self, ui: &mut egui::Ui, folder: &str, language: Language) {
+        let is_zh = language.is_chinese();
         let is_ignored = self.ignored_folders.contains(folder);
 
         if !is_ignored {
-            if ui.button("彻底删除").clicked() {
+            if ui.button(if is_zh { "彻底删除" } else { "Delete" }).clicked() {
                 self.confirm_delete = Some((folder.to_string(), false));
                 self.status = None;
             }
-            if ui.button("移动").clicked() {
+            if ui.button(if is_zh { "移动" } else { "Move" }).clicked() {
                 self.move_module.show_window = true;
                 self.move_module.folder_name = folder.to_string();
             }
-            if ui.button("忽略").clicked() {
+            if ui.button(if is_zh { "忽略" } else { "Ignore" }).clicked() {
                 self.ignored_folders.insert(folder.to_string());
                 ignore::save_ignored_folders(&self.ignored_folders);
                 logger::log_info(&format!("文件夹 '{}' 已被忽略", folder));
             }
         } else {
             ui.add_enabled(false, |ui: &mut egui::Ui| {
-                let response1 = ui.button("彻底删除");
-                let response2 = ui.button("移动");
-                let response3 = ui.button("忽略");
+                let response1 = ui.button(if is_zh { "彻底删除" } else { "Delete" });
+                let response2 = ui.button(if is_zh { "移动" } else { "Move" });
+                let response3 = ui.button(if is_zh { "忽略" } else { "Ignore" });
                 response1 | response2 | response3
             });
         }
 
-        if ui.button("打开").clicked() {
+        if ui.button(if is_zh { "打开" } else { "Open" }).clicked() {
             if let Some(base_path) = utils::get_appdata_dir(&self.selected_appdata_folder) {
                 let full_path = base_path.join(folder);
                 if let Err(err) = open::open_folder(&full_path) {
@@ -270,43 +290,48 @@ impl ClearTabState {
             }
         }
 
-        if ui.button("生成描述").clicked() {
-            self.generate_description(folder);
+        if ui.button(if is_zh { "生成描述" } else { "Generate Description" }).clicked() {
+            self.generate_description(folder, language);
         }
     }
 
-    fn generate_description(&mut self, folder: &str) {
+    fn generate_description(&mut self, folder: &str, language: Language) {
         if let Some(callback) = &self.generate_description_callback {
-            self.status = Some(format!("正在为 {} 生成描述...", folder));
+            self.status = Some(if language.is_chinese() {
+                format!("正在为 {} 生成描述...", folder)
+            } else {
+                format!("Generating description for {}...", folder)
+            });
             // 传递实际的文件夹名和当前选中的AppData文件夹
             callback(folder);
         }
     }
 
-    pub fn show_sort_controls(&mut self, ui: &mut egui::Ui) {
+    pub fn show_sort_controls(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         ui.horizontal(|ui| {
             // 添加排序按钮
-            ui.menu_button("排序", |ui| {
-                if ui.button("名称正序").clicked() {
+            ui.menu_button(if is_zh { "排序" } else { "Sort" }, |ui| {
+                if ui.button(if is_zh { "名称正序" } else { "Name Asc" }).clicked() {
                     self.sort_criterion = Some("name".to_string());
                     self.sort_order = Some("asc".to_string());
                 }         
-                if ui.button("名称倒序").clicked() {
+                if ui.button(if is_zh { "名称倒序" } else { "Name Desc" }).clicked() {
                     self.sort_criterion = Some("name".to_string());
                     self.sort_order = Some("desc".to_string());
                 }
-                if ui.button("大小正序").clicked() {
+                if ui.button(if is_zh { "大小正序" } else { "Size Asc" }).clicked() {
                     self.sort_criterion = Some("size".to_string());
                     self.sort_order = Some("asc".to_string());
                 }
-                if ui.button("大小倒序").clicked() {
+                if ui.button(if is_zh { "大小倒序" } else { "Size Desc" }).clicked() {
                     self.sort_criterion = Some("size".to_string());
                     self.sort_order = Some("desc".to_string());
                 }
             });
             
             // 数据库状态显示
-            self.show_database_status(ui);
+            self.show_database_status(ui, language);
         });
 
         // 计算总大小
@@ -314,55 +339,75 @@ impl ClearTabState {
 
         ui.horizontal(|ui| {
             // 显示总大小
-            ui.label(format!("总大小: {}", utils::format_size(self.total_size)));
+            ui.label(if is_zh {
+                format!("总大小: {}", utils::format_size(self.total_size))
+            } else {
+                format!("Total size: {}", utils::format_size(self.total_size))
+            });
 
             // 显示总清理数和总大小
-            ui.label(format!(
-                "已清理文件夹数量: {}",
-                self.stats.cleaned_folders_count
-            ));
-            ui.label(format!(
-                "总清理大小: {}",
-                utils::format_size(self.stats.total_cleaned_size)
-            ));
+            ui.label(if is_zh {
+                format!("已清理文件夹数量: {}", self.stats.cleaned_folders_count)
+            } else {
+                format!("Cleaned folder count: {}", self.stats.cleaned_folders_count)
+            });
+            ui.label(if is_zh {
+                format!("总清理大小: {}", utils::format_size(self.stats.total_cleaned_size))
+            } else {
+                format!("Total cleaned size: {}", utils::format_size(self.stats.total_cleaned_size))
+            });
         });
     }
 
-    fn show_database_status(&self, ui: &mut egui::Ui) {
+    fn show_database_status(&self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         let db_path = get_default_db_path();
         
         if database_exists(&db_path) {
             ui.label("📊");
-            if ui.button("数据库状态").clicked() {
+            if ui.button(if is_zh { "数据库状态" } else { "Database Status" }).clicked() {
                 // 可以在这里添加详细的数据库状态窗口
             }
             
             // 显示数据库统计信息（如果能够打开数据库）
             if let Ok(db) = Database::new(&db_path) {
                 if let Ok((total_records, last_updated)) = db.get_stats() {
-                    ui.label(format!("记录数: {}", total_records));
+                    ui.label(if is_zh {
+                        format!("记录数: {}", total_records)
+                    } else {
+                        format!("Records: {}", total_records)
+                    });
                     if last_updated != "无数据" {
                         // 只显示日期部分，不显示完整时间戳
                         if let Ok(datetime) = chrono::DateTime::parse_from_rfc3339(&last_updated) {
                             let date_str = datetime.format("%Y-%m-%d %H:%M").to_string();
-                            ui.label(format!("更新: {}", date_str));
+                            ui.label(if is_zh {
+                                format!("更新: {}", date_str)
+                            } else {
+                                format!("Updated: {}", date_str)
+                            });
                         } else {
-                            ui.label("更新: 最近");
+                            ui.label(if is_zh { "更新: 最近" } else { "Updated: recent" });
                         }
                     }
                 }
             }
         } else {
-            ui.label("🔍 首次扫描将创建数据库");
+            ui.label(if is_zh {
+                "🔍 首次扫描将创建数据库"
+            } else {
+                "🔍 First scan will create database"
+            });
         }
     }
 
-    pub fn show_folder_grid(&mut self, ui: &mut egui::Ui) {
+    pub fn show_folder_grid(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         Grid::new("folders_table").striped(true).show(ui, |ui| {
-            ui.label("文件夹");
-            ui.label("大小");
-            ui.label("描述");
-            ui.label("操作");
+            ui.label(if is_zh { "文件夹" } else { "Folder" });
+            ui.label(if is_zh { "大小" } else { "Size" });
+            ui.label(if is_zh { "描述" } else { "Description" });
+            ui.label(if is_zh { "操作" } else { "Actions" });
             ui.end_row();
 
             // 先排序
@@ -389,13 +434,14 @@ impl ClearTabState {
 
             // 使用临时数据进行遍历
             for (folder, size) in folder_data {
-                self.handle_folder_operations(ui, &folder, size);
+                self.handle_folder_operations(ui, &folder, size, language);
                 ui.end_row();
             }
         });
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         // 初始化if未加载folder descriptions
         if self.folder_descriptions.is_none() {
             self.folder_descriptions =
@@ -413,14 +459,15 @@ impl ClearTabState {
             &mut self.stats,
             &self.stats_logger,
             &self.db,
+            language,
         );
 
         // 扫描按钮和生成描述按钮放在一起
         ui.horizontal(|ui| {
-            if ui.button("立即扫描").clicked() && !self.is_scanning {
+            if ui.button(if is_zh { "立即扫描" } else { "Scan Now" }).clicked() && !self.is_scanning {
                 self.is_scanning = true;
                 self.folder_data.clear();
-                self.status = Some("扫描中...".to_string());
+                self.status = Some(if is_zh { "扫描中...".to_string() } else { "Scanning...".to_string() });
 
                 let tx = self.tx.clone().unwrap();
                 let folder_type = self.selected_appdata_folder.clone();
@@ -429,21 +476,25 @@ impl ClearTabState {
             }
 
             // 一键生成所有描述按钮
-            if ui.button("一键生成所有描述").clicked() {
+            if ui.button(if is_zh { "一键生成所有描述" } else { "Generate All Descriptions" }).clicked() {
                 if let Some(callback) = &self.generate_all_descriptions_callback {
-                    self.status = Some("正在生成描述...".to_string());
+                    self.status = Some(if is_zh {
+                        "正在生成描述...".to_string()
+                    } else {
+                        "Generating descriptions...".to_string()
+                    });
                     callback(&self.folder_data, &self.selected_appdata_folder);
                 }
             }
 
             // 删除数据库按钮
-            if ui.button("删除数据库").clicked() {
+            if ui.button(if is_zh { "删除数据库" } else { "Delete Database" }).clicked() {
                 self.show_delete_db_confirmation = true;
             }
         });
 
         // 添加批量操作按钮
-        self.show_bulk_actions(ui);
+        self.show_bulk_actions(ui, language);
 
         // 接收扫描结果
         if let Some(rx) = &self.rx {
@@ -451,7 +502,11 @@ impl ClearTabState {
                 // 检查是否接收到扫描完成标志
                 if folder == "__SCAN_COMPLETE__" {
                     self.is_scanning = false;
-                    self.status = Some("扫描完成".to_string());
+                    self.status = Some(if is_zh {
+                        "扫描完成".to_string()
+                    } else {
+                        "Scan completed".to_string()
+                    });
                 } else if folder == "__TEMP_CLEANUP_COMPLETE__" {
                     // 处理Temp目录清理完成的标志
                     self.is_cleaning_temp = false;
@@ -471,31 +526,35 @@ impl ClearTabState {
         }
 
         // 排序控件
-        self.show_sort_controls(ui);
+        self.show_sort_controls(ui, language);
 
         // 文件夹列表
         ScrollArea::vertical().show(ui, |ui| {
-            self.show_folder_grid(ui);
+            self.show_folder_grid(ui, language);
         });
 
         // 删除数据库确认对话框
         if self.show_delete_db_confirmation {
-            egui::Window::new("确认删除数据库")
+            egui::Window::new(if is_zh { "确认删除数据库" } else { "Confirm Database Deletion" })
                 .collapsible(false)
                 .resizable(false)
                 .show(ui.ctx(), |ui| {
-                    ui.label("确定要删除数据库吗？");
+                    ui.label(if is_zh { "确定要删除数据库吗？" } else { "Are you sure you want to delete the database?" });
                     ui.horizontal(|ui| {
-                        if ui.button("是").clicked() {
+                        if ui.button(if is_zh { "是" } else { "Yes" }).clicked() {
                             // 删除数据库文件
                             let db_path = get_default_db_path();
                             let _ = std::fs::remove_file(&db_path);
 
                             // 更新状态
-                            self.status = Some("数据库已删除".to_string());
+                            self.status = Some(if is_zh {
+                                "数据库已删除".to_string()
+                            } else {
+                                "Database deleted".to_string()
+                            });
                             self.show_delete_db_confirmation = false;
                         }
-                        if ui.button("否").clicked() {
+                        if ui.button(if is_zh { "否" } else { "No" }).clicked() {
                             self.show_delete_db_confirmation = false;
                         }
                     });
@@ -503,12 +562,17 @@ impl ClearTabState {
         }
     }
 
-    pub fn show_bulk_actions(&mut self, ui: &mut egui::Ui) {
+    pub fn show_bulk_actions(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         ui.horizontal(|ui| {
-            if ui.button("批量删除").clicked() {
+            if ui.button(if is_zh { "批量删除" } else { "Batch Delete" }).clicked() {
                 for folder in &self.selected_folders {
                     if self.ignored_folders.contains(folder) {
-                        self.status = Some(format!("文件夹 '{}' 在忽略名单中，无法删除", folder));
+                        self.status = Some(if is_zh {
+                            format!("文件夹 '{}' 在忽略名单中，无法删除", folder)
+                        } else {
+                            format!("Folder '{}' is in ignore list and cannot be deleted", folder)
+                        });
                         logger::log_info(&format!("文件夹 '{}' 在忽略名单中，无法删除", folder));
                         return;
                     }
@@ -518,11 +582,15 @@ impl ClearTabState {
                     self.confirm_delete = Some(("BULK_DELETE".to_string(), true));
                     self.status = None; // 确保状态信息不影响按钮显示
                 } else {
-                    self.status = Some("未选择任何文件夹，无法执行批量删除".to_string());
+                    self.status = Some(if is_zh {
+                        "未选择任何文件夹，无法执行批量删除".to_string()
+                    } else {
+                        "No folder selected for batch deletion".to_string()
+                    });
                 }
             }
 
-            if ui.button("批量忽略").clicked() {
+            if ui.button(if is_zh { "批量忽略" } else { "Batch Ignore" }).clicked() {
                 for folder in &self.selected_folders {
                     self.ignored_folders.insert(folder.to_string());
                     logger::log_info(&format!("文件夹 '{}' 已被忽略", folder));

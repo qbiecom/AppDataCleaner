@@ -4,6 +4,7 @@ mod confirmation; // 确认删除模块
 mod database; // 数据库模块
 mod delete; // 引入删除模块
 mod ignore; // 引入忽略模块
+mod lang;
 mod logger; // 引入日志模块
 mod move_module; // 移动文件夹，使用 mklink 指令
 mod open; // 调用资源管理器打开文件夹

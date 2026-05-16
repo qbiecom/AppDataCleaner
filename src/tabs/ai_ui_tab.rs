@@ -1,4 +1,5 @@
 use crate::ai_config::{AIConfig, AIHandler};
+use crate::lang::Language;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
@@ -87,25 +88,26 @@ impl AIConfigurationUI {
     }
 
     // 修改为公共方法，可以直接在主面板上调用
-    pub fn draw_config_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn draw_config_ui(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         // 创建整体垂直布局
         ui.vertical(|ui| {
             // 顶部标签栏
             ui.horizontal(|ui| {
                 if ui
-                    .selectable_label(self.current_tab == ConfigTab::ApiSettings, "API设置")
+                    .selectable_label(self.current_tab == ConfigTab::ApiSettings, if is_zh { "API设置" } else { "API Settings" })
                     .clicked()
                 {
                     self.current_tab = ConfigTab::ApiSettings;
                 }
                 if ui
-                    .selectable_label(self.current_tab == ConfigTab::RetrySettings, "重试设置")
+                    .selectable_label(self.current_tab == ConfigTab::RetrySettings, if is_zh { "重试设置" } else { "Retry Settings" })
                     .clicked()
                 {
                     self.current_tab = ConfigTab::RetrySettings;
                 }
                 if ui
-                    .selectable_label(self.current_tab == ConfigTab::PromptSettings, "Prompt设置")
+                    .selectable_label(self.current_tab == ConfigTab::PromptSettings, if is_zh { "Prompt设置" } else { "Prompt Settings" })
                     .clicked()
                 {
                     self.current_tab = ConfigTab::PromptSettings;
@@ -116,9 +118,9 @@ impl AIConfigurationUI {
 
             // 中间部分：根据选中的标签显示对应的内容区域
             ui.group(|ui| match self.current_tab {
-                ConfigTab::ApiSettings => self.draw_basic_settings(ui),
-                ConfigTab::RetrySettings => self.draw_retry_settings(ui),
-                ConfigTab::PromptSettings => self.draw_prompt_settings(ui),
+                ConfigTab::ApiSettings => self.draw_basic_settings(ui, language),
+                ConfigTab::RetrySettings => self.draw_retry_settings(ui, language),
+                ConfigTab::PromptSettings => self.draw_prompt_settings(ui, language),
             });
 
             ui.separator();
@@ -134,11 +136,12 @@ impl AIConfigurationUI {
     }
 
     // 添加绘制基本设置的方法
-    fn draw_basic_settings(&mut self, ui: &mut egui::Ui) {
+    fn draw_basic_settings(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         ui.horizontal(|ui| {
-            ui.heading("API设置");
+            ui.heading(if is_zh { "API设置" } else { "API Settings" });
             ui.hyperlink_to(
-                "如何获取 API 密钥?",
+                if is_zh { "如何获取 API 密钥?" } else { "How to get an API key?" },
                 "https://github.com/TC999/AppDataCleaner/issues/48#issuecomment-2674567816",
             );
         });
@@ -147,7 +150,7 @@ impl AIConfigurationUI {
 
         // API 配置
         ui.horizontal(|ui| {
-            ui.label("API地址:");
+            ui.label(if is_zh { "API地址:" } else { "API URL:" });
             if ui
                 .add(egui::TextEdit::singleline(&mut self.ai_config.model.url))
                 .changed()
@@ -157,7 +160,7 @@ impl AIConfigurationUI {
         });
 
         ui.horizontal(|ui| {
-            ui.label("API密钥:");
+            ui.label(if is_zh { "API密钥:" } else { "API Key:" });
             if ui
                 .add(
                     egui::TextEdit::singleline(&mut self.ai_config.model.api_key)
@@ -167,13 +170,13 @@ impl AIConfigurationUI {
             {
                 changed = true;
             }
-            if ui.button("显示/隐藏").clicked() {
+            if ui.button(if is_zh { "显示/隐藏" } else { "Show/Hide" }).clicked() {
                 self.is_password_visible = !self.is_password_visible;
             }
         });
 
         ui.horizontal(|ui| {
-            ui.label("模型名称:");
+            ui.label(if is_zh { "模型名称:" } else { "Model Name:" });
             if ui
                 .add(egui::TextEdit::singleline(&mut self.ai_config.model.model))
                 .changed()
@@ -184,7 +187,7 @@ impl AIConfigurationUI {
 
         // 添加测试连接按钮 - 修复生命周期问题
         ui.horizontal(|ui| {
-            if ui.button("测试连接").clicked() {
+            if ui.button(if is_zh { "测试连接" } else { "Test Connection" }).clicked() {
                 // 先保存当前配置
                 if changed {
                     self.check_and_save_config();
@@ -201,10 +204,18 @@ impl AIConfigurationUI {
                         if let Ok(handler) = handler.lock() {
                             match handler.test_connection().await {
                                 Ok(message) => Ok(message),
-                                Err(e) => Err(format!("连接失败: {}", e)),
+                                Err(e) => Err(if is_zh {
+                                    format!("连接失败: {}", e)
+                                } else {
+                                    format!("Connection failed: {}", e)
+                                }),
                             }
                         } else {
-                            Err("无法获取 AI 处理器锁".to_string())
+                            Err(if is_zh {
+                                "无法获取 AI 处理器锁".to_string()
+                            } else {
+                                "Cannot acquire AI handler lock".to_string()
+                            })
                         }
                     });
 
@@ -222,7 +233,11 @@ impl AIConfigurationUI {
                     }
                     Err(_) => {
                         // 如果没有立即接收到结果，设置一个等待状态
-                        self.status = Some("正在测试连接...".to_string());
+                        self.status = Some(if is_zh {
+                            "正在测试连接...".to_string()
+                        } else {
+                            "Testing connection...".to_string()
+                        });
 
                         // 保存接收器供后续 UI 更新使用
                         let ctx = ui.ctx().clone();
@@ -263,32 +278,38 @@ impl AIConfigurationUI {
     }
 
     // 添加绘制重试设置的方法
-    fn draw_retry_settings(&mut self, ui: &mut egui::Ui) {
-        ui.heading("重试设置");
+    fn draw_retry_settings(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
+        ui.heading(if is_zh { "重试设置" } else { "Retry Settings" });
         ui.horizontal(|ui| {
-            ui.label("重试次数:");
+            ui.label(if is_zh { "重试次数:" } else { "Retry attempts:" });
             ui.add(egui::DragValue::new(&mut self.ai_config.retry.attempts).range(1..=10));
         });
         ui.horizontal(|ui| {
-            ui.label("重试延迟(秒):");
+            ui.label(if is_zh { "重试延迟(秒):" } else { "Retry delay (s):" });
             ui.add(egui::DragValue::new(&mut self.ai_config.retry.delay).range(1..=60));
         });
     }
 
     // 添加绘制 Prompt 设置的方法
-    fn draw_prompt_settings(&mut self, ui: &mut egui::Ui) {
+    fn draw_prompt_settings(&mut self, ui: &mut egui::Ui, language: Language) {
+        let is_zh = language.is_chinese();
         // 将标题和重置按钮放在同一行
         ui.horizontal(|ui| {
-            ui.heading("Prompt设置");
+            ui.heading(if is_zh { "Prompt设置" } else { "Prompt Settings" });
             // 添加一些间距，使布局更美观
             ui.add_space(8.0);
-            if ui.button("重置为默认").clicked() {
+            if ui.button(if is_zh { "重置为默认" } else { "Reset to default" }).clicked() {
                 // 创建默认配置以获取默认Prompt
                 let default_config = AIConfig::default();
                 self.ai_config.model.prompt = default_config.model.prompt.clone();
 
                 // 标记为已更改，触发自动保存
-                self.status = Some("已重置为默认Prompt".to_string());
+                self.status = Some(if is_zh {
+                    "已重置为默认Prompt".to_string()
+                } else {
+                    "Prompt reset to default".to_string()
+                });
                 self.check_and_save_config();
             }
         });
@@ -312,6 +333,10 @@ impl AIConfigurationUI {
 
         // 在底部添加一个提示，告诉用户内容会自动保存
         ui.separator();
-        ui.small("提示: 内容修改后会自动保存");
+        ui.small(if is_zh {
+            "提示: 内容修改后会自动保存"
+        } else {
+            "Tip: Changes are automatically saved"
+        });
     }
 }
