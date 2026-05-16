@@ -1,4 +1,4 @@
-name: Win7 测试
+name: Win7 Test
 
 on:
   workflow_dispatch:
@@ -11,16 +11,16 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: 仓库初始化
+      - name: Initialize repository
         uses: actions/checkout@v4
 
-      - name: 安装并切换到 MSVC Rust toolchain
+      - name: Install and switch to the MSVC Rust toolchain
         run: |
           rustup toolchain install nightly
           rustup default nightly
           rustup component add rust-src --toolchain nightly-x86_64-pc-windows-msvc
 
-      - name: 安装并解压 LLVM 到仓库目录并加入 PATH
+      - name: Install and extract LLVM into the repository and add it to PATH
         shell: pwsh
         run: |
           $archiveName = 'LLVM-14.0.6-win64.7z'
@@ -30,27 +30,27 @@ jobs:
           $dest = Join-Path $workspace 'LLVM'
           $archivePath = Join-Path $workspace $archiveName
 
-          # 创建目录
+          # Create directory
           New-Item -ItemType Directory -Path $dest -Force | Out-Null
 
-          # 下载压缩包（使用 PowerShell 原生命令，避免依赖 wget）
+          # Download the archive using PowerShell's native command to avoid depending on wget
           Write-Output "Downloading $archiveUrl -> $archivePath"
           Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath
 
-          # 确保有 7z（在 runner 上通常存在；若不存在，用 choco 安装）
+          # Ensure 7z is available (it usually exists on the runner; install it with choco if needed)
           if (-not (Get-Command 7z -ErrorAction SilentlyContinue)) {
             Write-Output '7z not found, installing 7zip via choco'
             choco install 7zip -y
           }
 
-          # 解压到目标目录（注意 -o 参数不能有空格）
+          # Extract to the target directory (note that the -o argument must not contain a space)
           & 7z x $archivePath ("-o$dest") -y
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "7z 解压失败，退出码 $LASTEXITCODE"
+            Write-Error "7z extraction failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
           }
 
-          # 尝试定位 bin 目录（直接在 $dest 下或子目录中）
+          # Try to locate the bin directory (directly under $dest or in a subdirectory)
           $bin = Join-Path $dest 'bin'
           if (-not (Test-Path $bin)) {
             $firstDir = Get-ChildItem -Path $dest -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -61,21 +61,21 @@ jobs:
           }
 
           if (-not (Test-Path $bin)) {
-            Write-Warning "未能找到 bin 目录，解压包内部结构可能不同，请检查 $dest"
+            Write-Warning "Could not find the bin directory; the extracted archive structure may be different. Check $dest"
           } else {
-            Write-Output "LLVM bin 目录: $bin"
-            # 把 bin 追加到 GITHUB_PATH，使其在后续 steps 可用
+            Write-Output "LLVM bin directory: $bin"
+            # Append bin to GITHUB_PATH so it is available in later steps
             $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            # 并立即在当前 step 生效
+            # Also make it available in the current step
             $env:PATH = "$bin;$env:PATH"
-            Write-Output "已把 $bin 添加到 PATH"
+            Write-Output "Added $bin to PATH"
           }
 
-      - name: 构建（Windows MSVC）
+      - name: Build (Windows MSVC)
         run: |
           cargo build --release -Z build-std --target x86_64-win7-windows-msvc
 
-      - name: 上传构建产物
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: AppDataCleaner

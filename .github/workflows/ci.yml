@@ -14,22 +14,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: 仓库初始化
+      - name: Initialize repository
         uses: actions/checkout@v4
-      - name: 安装 Rust
+      - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-      - name: Rust 缓存
+      - name: Rust cache
         uses: Swatinem/rust-cache@v2.7.3
 
-      - name: 编译exe
+      - name: Build exe
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release --jobs 8
-      - name: 上传文件
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: AppDataCleaner

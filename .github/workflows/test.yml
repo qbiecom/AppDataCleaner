@@ -1,4 +1,4 @@
-name: 测试
+name: Test
 
 on:
   push:
@@ -13,9 +13,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    name: 测试
+    name: Test
     runs-on: windows-latest
 
     steps:

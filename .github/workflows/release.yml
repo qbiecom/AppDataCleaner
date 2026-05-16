@@ -1,40 +1,43 @@
-name: 发行
+name: Release
 
 on:
   workflow_dispatch:
     inputs:
       rname:
-        description: "发行版名称"
+        description: "Release name"
         type: string
       tag_name:
-        description: "标签名称"
+        description: "Tag name"
         type: string
 
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    name: 编译
+    name: Build
     runs-on: windows-latest
 
     steps:
-      - name: 仓库初始化
+      - name: Initialize repository
         uses: actions/checkout@v3
-      - name: 安装 Rust
+      - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-      - name: Rust 缓存
+      - name: Rust cache
         uses: Swatinem/rust-cache@v2.7.3
 
-      - name: 编译exe
+      - name: Build exe
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release
-      - name: 上传文件
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: AppDataCleaner
@@ -43,26 +46,26 @@ jobs:
             target\release\AppDataCleaner.pdb
 
   release:
-    name: 发行
+    name: Release
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: 下载文件
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: 创建压缩包
+      - name: Create archive
         run: cd artifacts/AppDataCleaner && zip -r "../../AppDataCleaner.zip" .
 
-      - name: 移动文件
+      - name: Move files
         run: |
           mv artifacts/AppDataCleaner/AppDataCleaner.exe AppDataCleaner.exe
           mv artifacts/AppDataCleaner/AppDataCleaner.pdb AppDataCleaner.pdb
 
-      - name: 自动发布发行版
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ inputs.rname }}
