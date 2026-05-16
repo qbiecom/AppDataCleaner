@@ -1,4 +1,5 @@
 use crate::logger;
+use crate::lang::Language;
 use dirs_next as dirs;
 use eframe::egui;
 use native_dialog::FileDialog;
@@ -42,7 +43,8 @@ impl Default for MoveModule {
 }
 
 impl MoveModule {
-    pub fn show_move_window(&mut self, ctx: &egui::Context) {
+    pub fn show_move_window(&mut self, ctx: &egui::Context, language: Language) {
+        let is_zh = language.is_chinese();
         let mut receiver = self.receiver.take();
         // 非阻塞地检查进度消息
         if let Some(rx) = receiver.as_ref() {
@@ -55,13 +57,20 @@ impl MoveModule {
                         ctx.request_repaint(); // 请求重绘以更新 UI
                     }
                     ProgressMessage::HashVerificationStart => {
-                        self.status_message = Some("开始哈希校验...".to_string());
+                        self.status_message = Some(if is_zh {
+                            "开始哈希校验...".to_string()
+                        } else {
+                            "Starting hash verification...".to_string()
+                        });
                         ctx.request_repaint();
                     }
                     ProgressMessage::HashVerificationProgress(progress) => {
                         self.progress = progress;
-                        self.status_message =
-                            Some(format!("哈希校验进度: {:.1}%", progress * 100.0));
+                        self.status_message = Some(if is_zh {
+                            format!("哈希校验进度: {:.1}%", progress * 100.0)
+                        } else {
+                            format!("Hash verification progress: {:.1}%", progress * 100.0)
+                        });
                         ctx.request_repaint();
                     }
                     ProgressMessage::Success(msg) => {
@@ -86,19 +95,23 @@ impl MoveModule {
         }
 
         if self.show_window {
-            egui::Window::new("移动文件夹")
+            egui::Window::new(if is_zh { "移动文件夹" } else { "Move Folder" })
                 .resizable(false)
                 .collapsible(false)
                 .show(ctx, |ui| {
-                    ui.label(format!("需要移动的文件夹: {}", self.folder_name));
+                    ui.label(if is_zh {
+                        format!("需要移动的文件夹: {}", self.folder_name)
+                    } else {
+                        format!("Folder to move: {}", self.folder_name)
+                    });
 
                     // 显示目标路径选择
                     ui.horizontal(|ui| {
-                        ui.label("目标路径:");
+                        ui.label(if is_zh { "目标路径:" } else { "Target path:" });
                         if let Some(path) = &self.selected_path {
                             ui.label(path.display().to_string());
                         }
-                        if ui.button("选择目标路径").clicked() {
+                        if ui.button(if is_zh { "选择目标路径" } else { "Select target path" }).clicked() {
                             // 使用文件对话框选择目标路径
                             if let Ok(Some(path)) = FileDialog::new().show_open_single_dir() {
                                 self.selected_path = Some(path);
@@ -122,18 +135,22 @@ impl MoveModule {
                     let can_start = self.receiver.is_none(); // 只有在没有正在进行的操作时才能开始
                     ui.horizontal(|ui| {
                         if ui
-                            .add_enabled(can_start, egui::Button::new("确定"))
+                            .add_enabled(can_start, egui::Button::new(if is_zh { "确定" } else { "Confirm" }))
                             .clicked()
                         {
                             if let Some(target_path) = &self.selected_path {
-                                self.start_move_folder(target_path.clone());
+                                self.start_move_folder(target_path.clone(), language);
                             } else {
-                                self.status_message = Some("请选择目标路径".to_string());
+                                self.status_message = Some(if is_zh {
+                                    "请选择目标路径".to_string()
+                                } else {
+                                    "Please select target path".to_string()
+                                });
                             }
                         }
 
                         if ui
-                            .add_enabled(can_start, egui::Button::new("取消"))
+                            .add_enabled(can_start, egui::Button::new(if is_zh { "取消" } else { "Cancel" }))
                             .clicked()
                         {
                             self.show_window = false;
@@ -143,7 +160,8 @@ impl MoveModule {
         }
     }
 
-    fn start_move_folder(&mut self, target_path: PathBuf) {
+    fn start_move_folder(&mut self, target_path: PathBuf, language: Language) {
+        let is_zh = language.is_chinese();
         // 获取系统 AppData 路径
         let appdata_path = dirs::data_dir()
             .or_else(|| dirs::config_dir()) // 备用获取 Roaming 路径
@@ -161,7 +179,11 @@ impl MoveModule {
 
         // 验证源文件夹是否存在
         if !source_path.exists() {
-            self.status_message = Some(format!("源文件夹不存在: {}", source_path.display()));
+            self.status_message = Some(if is_zh {
+                format!("源文件夹不存在: {}", source_path.display())
+            } else {
+                format!("Source folder does not exist: {}", source_path.display())
+            });
             println!("源文件夹不存在: {}", source_path.display());
             logger::log_error(&format!("源文件夹不存在: {}", source_path.display()));
             return;
@@ -170,7 +192,11 @@ impl MoveModule {
         let (tx, rx): (Sender<ProgressMessage>, Receiver<ProgressMessage>) = mpsc::channel();
         self.receiver = Some(rx);
         self.progress = 0.0;
-        self.status_message = Some("开始移动文件夹...".to_string());
+        self.status_message = Some(if is_zh {
+            "开始移动文件夹...".to_string()
+        } else {
+            "Starting folder move...".to_string()
+        });
 
         let folder_name = self.folder_name.clone();
         let target_folder_path = target_path.join(&folder_name);
@@ -185,48 +211,76 @@ impl MoveModule {
 
             // 步骤 1: 创建目标目录
             if let Err(err) = fs::create_dir_all(&target_folder_path) {
-                let _ = tx.send(ProgressMessage::Error(format!("无法创建目标目录: {}", err)));
+                let _ = tx.send(ProgressMessage::Error(if is_zh {
+                    format!("无法创建目标目录: {}", err)
+                } else {
+                    format!("Cannot create target directory: {}", err)
+                }));
                 return;
             }
 
             // 步骤 2: 复制文件夹，显示进度
-            if let Err(err) = copy_dir_with_progress(&source_path, &target_folder_path, &tx) {
-                let _ = tx.send(ProgressMessage::Error(format!("复制失败: {}", err)));
+            if let Err(err) = copy_dir_with_progress(&source_path, &target_folder_path, &tx, is_zh) {
+                let _ = tx.send(ProgressMessage::Error(if is_zh {
+                    format!("复制失败: {}", err)
+                } else {
+                    format!("Copy failed: {}", err)
+                }));
                 return;
             }
 
             // 步骤 3: 哈希校验
             let _ = tx.send(ProgressMessage::HashVerificationStart);
 
-            match verify_directory_hashes(&source_path, &target_folder_path, &tx) {
+            match verify_directory_hashes(&source_path, &target_folder_path, &tx, is_zh) {
                 Ok(true) => {
                     logger::log_info("哈希校验通过，所有文件完全一致");
                     let _ = tx.send(ProgressMessage::Progress(
                         0.9,
-                        "哈希校验通过，开始删除源目录...".to_string(),
+                        if is_zh {
+                            "哈希校验通过，开始删除源目录...".to_string()
+                        } else {
+                            "Hash verification passed, deleting source directory...".to_string()
+                        },
                     ));
                 }
                 Ok(false) => {
                     let _ = tx.send(ProgressMessage::Error(
-                        "哈希校验失败！源文件和目标文件不一致，操作已终止".to_string(),
+                        if is_zh {
+                            "哈希校验失败！源文件和目标文件不一致，操作已终止".to_string()
+                        } else {
+                            "Hash verification failed, source and target files differ. Operation stopped.".to_string()
+                        },
                     ));
                     return;
                 }
                 Err(err) => {
-                    let _ = tx.send(ProgressMessage::Error(format!("哈希校验出错: {}", err)));
+                    let _ = tx.send(ProgressMessage::Error(if is_zh {
+                        format!("哈希校验出错: {}", err)
+                    } else {
+                        format!("Hash verification error: {}", err)
+                    }));
                     return;
                 }
             }
 
             // 步骤 4: 删除原文件夹
             if let Err(err) = fs::remove_dir_all(&source_path) {
-                let _ = tx.send(ProgressMessage::Error(format!("删除源目录失败: {}", err)));
+                let _ = tx.send(ProgressMessage::Error(if is_zh {
+                    format!("删除源目录失败: {}", err)
+                } else {
+                    format!("Failed to delete source directory: {}", err)
+                }));
                 return;
             }
 
             let _ = tx.send(ProgressMessage::Progress(
                 0.95,
-                "正在创建符号链接...".to_string(),
+                if is_zh {
+                    "正在创建符号链接...".to_string()
+                } else {
+                    "Creating symbolic link...".to_string()
+                },
             ));
 
             // 步骤 5: 创建符号链接
@@ -253,25 +307,35 @@ impl MoveModule {
                 match output {
                     Ok(output) if output.status.success() => {
                         let success_msg = format!(
-                            "移动文件夹操作成功完成！\n源目录: {}\n目标目录: {}\n符号链接已创建",
-                            source_path.display(),
-                            target_folder_path.display()
+                            "{}\n{}\n{}\n{}",
+                            if is_zh { "移动文件夹操作成功完成！" } else { "Folder move completed successfully!" },
+                            if is_zh { format!("源目录: {}", source_path.display()) } else { format!("Source: {}", source_path.display()) },
+                            if is_zh { format!("目标目录: {}", target_folder_path.display()) } else { format!("Target: {}", target_folder_path.display()) },
+                            if is_zh { "符号链接已创建".to_string() } else { "Symbolic link created".to_string() },
                         );
                         logger::log_info(&success_msg);
                         let _ = tx.send(ProgressMessage::Success(success_msg));
                     }
                     Ok(output) => {
-                        let err_msg = format!(
-                            "移动文件成功，但创建符号链接失败: {}",
-                            String::from_utf8_lossy(&output.stderr)
-                        );
+                        let err_msg = if is_zh {
+                            format!(
+                                "移动文件成功，但创建符号链接失败: {}",
+                                String::from_utf8_lossy(&output.stderr)
+                            )
+                        } else {
+                            format!(
+                                "Files moved, but failed to create symbolic link: {}",
+                                String::from_utf8_lossy(&output.stderr)
+                            )
+                        };
                         let _ = tx.send(ProgressMessage::Error(err_msg));
                     }
                     Err(err) => {
-                        let _ = tx.send(ProgressMessage::Error(format!(
-                            "符号链接命令执行失败: {}",
-                            err
-                        )));
+                        let _ = tx.send(ProgressMessage::Error(if is_zh {
+                            format!("符号链接命令执行失败: {}", err)
+                        } else {
+                            format!("Symbolic link command failed: {}", err)
+                        }));
                     }
                 }
             } else {
@@ -281,12 +345,18 @@ impl MoveModule {
                     use std::os::unix::fs::symlink;
                     if let Err(err) = symlink(&target_folder_path, &source_path) {
                         let _ =
-                            tx.send(ProgressMessage::Error(format!("创建符号链接失败: {}", err)));
+                            tx.send(ProgressMessage::Error(if is_zh {
+                                format!("创建符号链接失败: {}", err)
+                            } else {
+                                format!("Failed to create symbolic link: {}", err)
+                            }));
                     } else {
                         let success_msg = format!(
-                            "移动文件夹操作成功完成！\n源目录: {}\n目标目录: {}\n符号链接已创建",
-                            source_path.display(),
-                            target_folder_path.display()
+                            "{}\n{}\n{}\n{}",
+                            if is_zh { "移动文件夹操作成功完成！" } else { "Folder move completed successfully!" },
+                            if is_zh { format!("源目录: {}", source_path.display()) } else { format!("Source: {}", source_path.display()) },
+                            if is_zh { format!("目标目录: {}", target_folder_path.display()) } else { format!("Target: {}", target_folder_path.display()) },
+                            if is_zh { "符号链接已创建".to_string() } else { "Symbolic link created".to_string() },
                         );
                         logger::log_info(&success_msg);
                         let _ = tx.send(ProgressMessage::Success(success_msg));
@@ -296,7 +366,11 @@ impl MoveModule {
                 #[cfg(not(unix))]
                 {
                     let _ = tx.send(ProgressMessage::Error(
-                        "此平台不支持符号链接创建".to_string(),
+                        if is_zh {
+                            "此平台不支持符号链接创建".to_string()
+                        } else {
+                            "This platform does not support symbolic links".to_string()
+                        },
                     ));
                 }
             }
@@ -309,6 +383,7 @@ fn copy_dir_with_progress(
     source: &Path,
     target: &Path,
     tx: &Sender<ProgressMessage>,
+    is_zh: bool,
 ) -> Result<(), String> {
     // 首先计算总文件数量
     let total_files = count_files_in_directory(source)?;
@@ -316,14 +391,22 @@ fn copy_dir_with_progress(
 
     let _ = tx.send(ProgressMessage::Progress(
         0.0,
-        format!("开始复制，共 {} 个文件...", total_files),
+        if is_zh {
+            format!("开始复制，共 {} 个文件...", total_files)
+        } else {
+            format!("Starting copy, {} files in total...", total_files)
+        },
     ));
 
-    copy_dir_recursive(source, target, tx, &mut copied_files, total_files)?;
+    copy_dir_recursive(source, target, tx, &mut copied_files, total_files, is_zh)?;
 
     let _ = tx.send(ProgressMessage::Progress(
         0.8,
-        "文件复制完成，准备哈希校验...".to_string(),
+        if is_zh {
+            "文件复制完成，准备哈希校验...".to_string()
+        } else {
+            "File copy complete, preparing hash verification...".to_string()
+        },
     ));
     Ok(())
 }
@@ -335,6 +418,7 @@ fn copy_dir_recursive(
     tx: &Sender<ProgressMessage>,
     copied_files: &mut usize,
     total_files: usize,
+    is_zh: bool,
 ) -> Result<(), String> {
     let entries: Vec<_> = fs::read_dir(source)
         .map_err(|err| format!("无法读取目录 {}: {}", source.display(), err))?
@@ -352,7 +436,7 @@ fn copy_dir_recursive(
         if file_type.is_dir() {
             fs::create_dir_all(&dest_path)
                 .map_err(|err| format!("无法创建目录 {}: {}", dest_path.display(), err))?;
-            copy_dir_recursive(&src_path, &dest_path, tx, copied_files, total_files)?;
+            copy_dir_recursive(&src_path, &dest_path, tx, copied_files, total_files, is_zh)?;
         } else {
             println!(
                 "复制文件: 从 {} 到 {}",
@@ -373,12 +457,21 @@ fn copy_dir_recursive(
             let progress = (*copied_files as f32 / total_files as f32) * 0.8; // 复制阶段占80%
             let _ = tx.send(ProgressMessage::Progress(
                 progress,
-                format!(
-                    "已复制 {}/{} 个文件: {}",
-                    *copied_files,
-                    total_files,
-                    src_path.file_name().unwrap_or_default().to_string_lossy()
-                ),
+                if is_zh {
+                    format!(
+                        "已复制 {}/{} 个文件: {}",
+                        *copied_files,
+                        total_files,
+                        src_path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                } else {
+                    format!(
+                        "Copied {}/{} files: {}",
+                        *copied_files,
+                        total_files,
+                        src_path.file_name().unwrap_or_default().to_string_lossy()
+                    )
+                },
             ));
         }
     }
@@ -403,6 +496,7 @@ fn verify_directory_hashes(
     source_dir: &Path,
     target_dir: &Path,
     tx: &Sender<ProgressMessage>,
+    _is_zh: bool,
 ) -> Result<bool, String> {
     // 获取源目录和目标目录的所有文件
     let source_files = collect_all_files(source_dir)?;

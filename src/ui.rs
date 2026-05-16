@@ -1,5 +1,6 @@
 use crate::logger;
 use crate::ai_config::{AIConfig, AIHandler};
+use crate::lang::Language;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Receiver;
@@ -7,9 +8,16 @@ use crate::tabs::about_tab;
 use crate::tabs::ai_ui_tab::AIConfigurationUI;
 use crate::tabs::clear_tab::ClearTabState;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TopTab {
+    Home,
+    About,
+    AIConfig,
+}
+
 pub struct AppDataCleaner {
     // 标签页状态
-    current_tab: String,             // 当前选中的标签页
+    current_tab: TopTab,             // 当前选中的标签页
     show_about_window: bool,
 
     // 日志相关字段
@@ -18,6 +26,7 @@ pub struct AppDataCleaner {
 
     // 主题相关字段
     dark_mode: bool,                 // 深色模式开关
+    language: Language,
 
     // 清理标签页状态
     clear_tab: ClearTabState,
@@ -100,7 +109,7 @@ impl Default for AppDataCleaner {
         Self {
             // 界面状态初始化
             show_about_window: false,
-            current_tab: "主页".to_string(),  // 默认选中主页标签
+            current_tab: TopTab::Home,  // 默认选中主页标签
 
             // 日志相关初始化
             is_logging_enabled: false,
@@ -108,6 +117,7 @@ impl Default for AppDataCleaner {
 
             // 主题相关初始化
             dark_mode: true,  // 默认使用深色模式
+            language: Language::Chinese,
 
             // 清理标签页初始化 
             clear_tab,
@@ -142,23 +152,31 @@ impl AppDataCleaner {
     }
 
     fn show_top_menu(&mut self, ctx: &egui::Context) {
+        let is_zh = self.language.is_chinese();
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {  
                 // 左侧标签页和选项
-                ui.selectable_value(&mut self.current_tab, "主页".to_string(), "主页");
-            ui.selectable_value(&mut self.current_tab, "关于".to_string(), "关于");
-            ui.selectable_value(&mut self.current_tab, "AI配置".to_string(), "AI配置");
+                ui.selectable_value(&mut self.current_tab, TopTab::Home, if is_zh { "主页" } else { "Home" });
+            ui.selectable_value(&mut self.current_tab, TopTab::About, if is_zh { "关于" } else { "About" });
+            ui.selectable_value(&mut self.current_tab, TopTab::AIConfig, if is_zh { "AI配置" } else { "AI Config" });
             ui.label("|"); // 添加分隔符
-            if ui.button("清理 Temp").clicked() {
+            if ui.button(if is_zh { "清理 Temp" } else { "Clean Temp" }).clicked() {
                 self.clear_tab.clean_temp_directory();
             }
             ui.label("|"); // 添加分隔符
-                ui.checkbox(&mut self.is_logging_enabled, "启用日志");
+                ui.checkbox(&mut self.is_logging_enabled, if is_zh { "启用日志" } else { "Enable Logging" });
 
                 // 添加一个弹性空间，将后面的内容推到右侧
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let language_text = if is_zh { "English" } else { "中文" };
+                    if ui.button(language_text).clicked() {
+                        self.language.toggle();
+                    }
+
+                    ui.separator();
+
                     // 切换文件夹按钮
-                    ui.menu_button("切换文件夹", |ui| {
+                    ui.menu_button(if is_zh { "切换文件夹" } else { "Switch Folder" }, |ui| {
                         for folder in ["Roaming", "Local", "LocalLow"] {
                             if ui.button(folder).clicked() {
                                 self.clear_tab.set_selected_appdata_folder(folder.to_string());
@@ -166,23 +184,37 @@ impl AppDataCleaner {
                             }
                         }
                         ui.separator();
-                        if ui.button("选择自定义文件夹...").clicked() {
+                        if ui.button(if is_zh { "选择自定义文件夹..." } else { "Select custom folder..." }).clicked() {
                             self.clear_tab.open_custom_folder_dialog();
                             ui.close_menu();
                         }
                     });
                     // 当前目标文件夹显示
                     let display_name = if let Some(custom_path) = &self.clear_tab.custom_folder_path {
-                        format!("自定义: {}", custom_path.display())
+                        if is_zh {
+                            format!("自定义: {}", custom_path.display())
+                        } else {
+                            format!("Custom: {}", custom_path.display())
+                        }
                     } else {
                         self.clear_tab.selected_appdata_folder.clone()
                     };
-                    ui.label(format!("当前目标: {}", display_name));
+                    ui.label(if is_zh {
+                        format!("当前目标: {}", display_name)
+                    } else {
+                        format!("Current target: {}", display_name)
+                    });
                     
                     ui.separator(); // 分隔符
                     
                     // 主题切换按钮
-                    let theme_text = if self.dark_mode { "☀ 浅色" } else { "🌙 深色" };
+                    let theme_text = if self.dark_mode {
+                        if is_zh { "☀ 浅色" } else { "☀ Light" }
+                    } else if is_zh {
+                        "🌙 深色"
+                    } else {
+                        "🌙 Dark"
+                    };
                     if ui.button(theme_text).clicked() {
                         self.dark_mode = !self.dark_mode;
                     }
@@ -220,7 +252,11 @@ impl AppDataCleaner {
                 // 重新加载描述文件以更新显示
                 self.clear_tab.update_folder_descriptions();
                 // 更新状态
-                self.clear_tab.status = Some(format!("已更新 {} 的描述", folder_name));
+                self.clear_tab.status = Some(if self.language.is_chinese() {
+                    format!("已更新 {} 的描述", folder_name)
+                } else {
+                    format!("Updated description for {}", folder_name)
+                });
                 // 强制重绘
                 ctx.request_repaint();
             }
@@ -231,11 +267,10 @@ impl AppDataCleaner {
 
         // 主面板 - 根据当前标签页显示不同内容
         egui::CentralPanel::default().show(ctx, |ui| {
-            match self.current_tab.as_str() {
-                "主页" => self.clear_tab.show(ui),
-                "关于" => about_tab::handle_about_tab(ui),
-                "AI配置" => self.ai_ui.draw_config_ui(ui),
-                _ => self.clear_tab.show(ui),
+            match self.current_tab {
+                TopTab::Home => self.clear_tab.show(ui, self.language),
+                TopTab::About => about_tab::handle_about_tab(ui, self.language),
+                TopTab::AIConfig => self.ai_ui.draw_config_ui(ui, self.language),
             }
         });
 
@@ -246,14 +281,14 @@ impl AppDataCleaner {
     fn show_windows(&mut self, ctx: &egui::Context) {
         // 关于窗口
         if self.show_about_window {
-            about_tab::show_about_window(ctx, &mut self.show_about_window);
+            about_tab::show_about_window(ctx, &mut self.show_about_window, self.language);
         }
 
         // AI配置窗口(使用重构后的AI UI模块)
         self.ai_ui.show(ctx);
 
         // 移动窗口
-        self.clear_tab.move_module.show_move_window(ctx);
+        self.clear_tab.move_module.show_move_window(ctx, self.language);
     }
 }
 
