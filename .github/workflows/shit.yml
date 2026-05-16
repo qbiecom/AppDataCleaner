@@ -3,6 +3,9 @@ name: Legacy code scan
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   Check:
     name: Legacy code scan
