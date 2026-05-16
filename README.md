@@ -1,159 +1,165 @@
-# [AppDataCleaner - 适用于 Windows 系统的 appdata 文件夹清理工具][repo-url]
+# [AppDataCleaner - AppData cleanup tool for Windows][repo-url]
 
- [![GitHub issues][issues-image]][issues-url]
- [![Github Pulls][pulls-image]][pulls-url]
- [![GitHub stars][stars-image]][stars-url]
- [![GitHub forks][forks-image]][forks-url]
- [![Github Downloads][download-image]][download-url]
- [![license][license-image]][license-url]
- ![repo-size][repo-size-image]
- <!--[![hits][hits-image]][hits-url1]-->
+[![GitHub issues][issues-image]][issues-url]
+[![GitHub pull requests][pulls-image]][pulls-url]
+[![GitHub stars][stars-image]][stars-url]
+[![GitHub forks][forks-image]][forks-url]
+[![GitHub downloads][download-image]][download-url]
+[![License][license-image]][license-url]
+![Repo size][repo-size-image]
+<!--[![hits][hits-image]][hits-url1]-->
 
-完全开源免费的清理 Appdata 的小工具！完全使用 ChatGPT 生成！
+A free, open-source AppData cleanup tool.
+
+> [!note]
+>
+> This repository is a fork of the original AppDataCleaner project. It adds an English README translation and may include future feature work.
 
 <details>
-<summary><h2>开发原因</h2></summary>
-<p>Windows系统安装的软件卸载时，即便使用专业卸载工具卸载后，appdata 中的文件仍旧不会删除，故开发此软件清理。</p>
-<p>本工具使用 Rust 编写，使用 ChatGPT 生成，并使用 egui 构建 GUI。</p>
-<p>本工具完全开源免费，欢迎各位大佬贡献代码。</p>
+<summary><h2>Why this exists</h2></summary>
+<p>When software is uninstalled on Windows, files left behind in AppData often remain even after using professional uninstall tools, so this app was created to help clean them up.</p>
+<p>The tool is written in Rust, uses egui for the GUI, and was originally generated with the help of ChatGPT.</p>
+<p>This fork is kept open and free for contributors who want an English version and future improvements.</p>
 </details>
 
 > [!warning]
 >
-> 本项目从未发布至 GitCode，如您发现请截图并保留证据
+> This project has never been published on GitCode. If you find a copy there, please take a screenshot and keep it as evidence.
 
-## 🖥系统要求
-- Windows 8 及以上
-- Windows 7 测试中
+## 🖥 System requirements
+- Windows 8 or later
+- Windows 7 is being tested
 
-## 使用方法
+## Usage
 
-### 📦下载exe文件
-- [发行版](https://github.com/TC999/AppDataCleaner/releases/latest)
-- [CI 构建](https://github.com/TC999/AppDataCleaner/actions/workflows/ci.yml)
-- [Windows Cleaner（内置，版本手动更新）](https://github.com/darkmatter2048/WindowsCleaner)
+### 📦 Download the EXE
+- [Releases](https://github.com/qbiecom/AppDataCleaner/releases/latest)
+- [CI build](https://github.com/qbiecom/AppDataCleaner/actions/workflows/ci.yml)
+- [Windows Cleaner (bundled, manually updated)](https://github.com/darkmatter2048/WindowsCleaner)
 
-以上两种方法二选一，下载后直接解压运行即可。
+Choose either download method, then unzip and run the app.
 
-## 星标历史
+## Star history
 
-<a href="https://star-history.com/#TC999/AppDataCleaner&Date">
+<a href="https://star-history.com/#qbiecom/AppDataCleaner&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TC999/AppDataCleaner&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=TC999/AppDataCleaner&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=TC999/AppDataCleaner&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=qbiecom/AppDataCleaner&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=qbiecom/AppDataCleaner&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=qbiecom/AppDataCleaner&type=Date" />
  </picture>
 </a>
 
-### 运行
+### Run the app
 > [!caution]
 >
-> 请注意，删除操作不可逆，请谨慎操作。
-- 双击运行
-- 点击“立即扫描”,软件会自动扫描 Appdata 文件夹，并显示扫描结果。
-- 自行选择“删除”或“移动”（暂未实现）
-#### 关于文件夹描述
-程序默认不带任何规则，请自行下载规则并放到软件根目录，后续出模板
+> Deletion is irreversible. Please be careful.
+- Double-click to run
+- Click "Scan now" and the app will scan the AppData folder and show the results
+- Choose between "Delete" or "Move" (not implemented yet)
 
-这是[作者本人维护的描述规则](https://github.com/TC999/TC999-subscription)
+#### About folder descriptions
+The app does not ship with any rules by default. Please download a rule set and place it in the project root.
 
-### 从源码编译
-#### 本地编译
-- 安装 Rust
-- 克隆此仓库
+These are the description rules maintained by the original author: [TC999/TC999-subscription](https://github.com/TC999/TC999-subscription)
+
+### Build from source
+#### Local build
+- Install Rust
+- Clone this repository
 ```
-git clone https://github.com/TC999/AppDataCleaner.git
+git clone https://github.com/qbiecom/AppDataCleaner.git
 ```
-- 进入项目目录
+- Enter the project directory
 ```
 cd AppDataCleaner
 ```
-- 运行
+- Run
 ```
 cargo run
 ```
-- 编译
+- Build
 ```
 cargo build --release
 ```
-- 编译产物在 target/release 目录下
-#### 或直接运行 CI 构建
+- The build output is in `target/release`
+#### Or run the CI build directly
 
-## 代码结构说明
-- `src`: 程序源代码目录
-- `assets`: 资源文件目录(注：字体文件不可删除，否则运行会显示方块！)
-- `Cargo.toml`: 依赖管理文件
+## Project structure
+- `src`: source code
+- `assets`: resources (note: do not delete the font file, or the UI will show squares)
+- `Cargo.toml`: dependency manifest
 
-## ✔ 待办
-- [x] 白名单模块（防止误删，保护重要数据
-- [x] 文件夹描述
-- [ ] 移动文件夹
-- [x] 打开文件夹（已成功
-- [ ] 多国语言支持（暂时不考虑，反正鬼佬也不用（不是
-- [ ] 优化界面
-- [ ] 优化代码
-- [ ] 添加软件图标
-- [x] 项目网站(使用 github pages 实现)
-- [ ] 其他……
+## ✔ TODO
+- [x] Whitelist module (prevents accidental deletion and protects important data)
+- [x] Folder descriptions
+- [ ] Move folder
+- [x] Open folder (implemented)
+- [ ] Multi-language support (not planned for now)
+- [ ] Improve the UI
+- [ ] Improve the code
+- [ ] Add an application icon
+- [x] Project website (implemented with GitHub Pages)
+- [ ] More...
 
-或者前往[这个讨论](https://github.com/TC999/AppDataCleaner/discussions/7)查看更多待办事项。
-## ✨ 贡献
+See [this discussion](https://github.com/TC999/AppDataCleaner/discussions/7) for more TODO items.
+
+## ✨ Contributing
 > [!note]
 >
-> 本仓库要求提交时验证GPG签名。[GPG签名设置方法][github-doc-gpg-url]
+> This repository requires GPG-signed commits. See [GPG signing setup][github-doc-gpg-url].
 
-1. 复刻本仓库
-2. 创建一个分支并以你修改的功能命名，注意每个功能单独一个代码文件（作为模块导入）
-3. 提交你的修改
-4. 创建一个拉取请求
+1. Fork this repository
+2. Create a branch named after the feature you are working on; keep each feature in its own code file and import it as a module
+3. Commit your changes
+4. Open a pull request
 
-详情请参考[贡献指南](CONTRIBUTING.md)。
-## 鸣谢
-- [TC999](https://github.com/TC999) - 作者
-- [ChatGPT](https://chatgpt.com/) - 代码编写
-- [egui](https://github.com/emilk/egui) - GUI 框架
-- [darkmatter2048](https://github.com/darkmatter2048) - CDN 提供
+See the [contributing guide](CONTRIBUTING.md) for details.
 
-### 所有贡献者
+## Acknowledgements
+- [TC999](https://github.com/TC999) - original author
+- [ChatGPT](https://chatgpt.com/) - code generation
+- [egui](https://github.com/emilk/egui) - GUI framework
+- [darkmatter2048](https://github.com/darkmatter2048) - CDN provider
 
-[![贡献者](https://contrib.rocks/image?repo=TC999/AppDataCleaner)](https://github.com/TC999/AppDataCleaner/graphs/contributors)
+### All contributors
 
-## 🤝 支持开发者
+[![Contributors](https://contrib.rocks/image?repo=qbiecom/AppDataCleaner)](https://github.com/qbiecom/AppDataCleaner/graphs/contributors)
 
-如果您喜欢这个项目，可以通过以下方式赞助我：[软件官网](http://adc.dyblog.online/donate.html)
+## 🤝 Support the developer
 
-![微信赞助](./readme/wechat.png)
+If you like this project, you can support it here: [project website](http://adc.dyblog.online/donate.html)
 
-## 📝 许可证
-本项目采用 [GPLv3 许可证](LICENSE)。
+![WeChat donation](./readme/wechat.png)
 
-<!-- 链接开始 -->
-[issues-url]: https://github.com/TC999/AppDataCleaner/issues "议题"
-[issues-image]: https://img.shields.io/github/issues/TC999/AppDataCleaner?style=flat-square&logo=github&label=议题
+## 📝 License
+This project is licensed under the [GPLv3 License](LICENSE).
 
-[pulls-url]: https://github.com/TC999/AppDataCleaner/pulls "拉取请求"
-[pulls-image]: https://img.shields.io/github/issues-pr-raw/TC999/AppDataCleaner?style=flat&logo=github&%3Fcolor%3Dgreen&label=%E6%8B%89%E5%8F%96%E8%AF%B7%E6%B1%82
+<!-- Links -->
+[issues-url]: https://github.com/qbiecom/AppDataCleaner/issues "Issues"
+[issues-image]: https://img.shields.io/github/issues/qbiecom/AppDataCleaner?style=flat-square&logo=github&label=Issues
 
-[stars-url]: https://github.com/TC999/AppDataCleaner/stargazers "星标"
-[stars-image]: https://img.shields.io/github/stars/TC999/AppDataCleaner?style=flat-square&logo=github&label=星标
+[pulls-url]: https://github.com/qbiecom/AppDataCleaner/pulls "Pull requests"
+[pulls-image]: https://img.shields.io/github/issues-pr-raw/qbiecom/AppDataCleaner?style=flat&logo=github&%3Fcolor%3Dgreen&label=Pull%20requests
 
-[forks-url]: https://github.com/TC999/AppDataCleaner/fork "复刻"
-[forks-image]: https://img.shields.io/github/forks/TC999/AppDataCleaner?style=flat-square&logo=github&label=复刻
+[stars-url]: https://github.com/qbiecom/AppDataCleaner/stargazers "Stars"
+[stars-image]: https://img.shields.io/github/stars/qbiecom/AppDataCleaner?style=flat-square&logo=github&label=Stars
 
-[discussions-url]: https://github.com/TC999/AppDataCleaner/discussions "讨论"
+[forks-url]: https://github.com/qbiecom/AppDataCleaner/fork "Fork"
+[forks-image]: https://img.shields.io/github/forks/qbiecom/AppDataCleaner?style=flat-square&logo=github&label=Forks
 
-[hits-url]: https://hits.dwyl.com/ "访问量"
-[hits-image]: https://custom-icon-badges.demolab.com/endpoint?url=https%3A%2F%2Fhits.dwyl.com%2FTC999%2FAppDataCleaner.json%3Fcolor%3Dgreen&label=%E8%AE%BF%E9%97%AE%E9%87%8F&logo=graph
+[discussions-url]: https://github.com/qbiecom/AppDataCleaner/discussions "Discussions"
 
-[repo-url]: https://github.com/TC999/AppDataCleaner "仓库地址"
+[hits-url]: https://hits.dwyl.com/ "Views"
+[hits-image]: https://custom-icon-badges.demolab.com/endpoint?url=https%3A%2F%2Fhits.dwyl.com%2Fqbiecom%2FAppDataCleaner.json%3Fcolor%3Dgreen&label=Views&logo=graph
 
-[repo-size-image]:https://img.shields.io/github/repo-size/TC999/AppDataCleaner?style=flat-square&label=%E4%BB%93%E5%BA%93%E5%A4%A7%E5%B0%8F
+[repo-url]: https://github.com/qbiecom/AppDataCleaner "Repository"
 
+[repo-size-image]: https://img.shields.io/github/repo-size/qbiecom/AppDataCleaner?style=flat-square&label=Repo%20size
 
-[download-url]: https://github.com/TC999/AppDataCleaner/releases/latest "下载"
-[download-image]: https://img.shields.io/github/downloads/TC999/AppDataCleaner/total?style=flat-square&logo=github&label=%E6%80%BB%E4%B8%8B%E8%BD%BD%E6%95%B0 "总下载数"
+[download-url]: https://github.com/qbiecom/AppDataCleaner/releases/latest "Download"
+[download-image]: https://img.shields.io/github/downloads/qbiecom/AppDataCleaner/total?style=flat-square&logo=github&label=Total%20downloads "Total downloads"
 
-[license-url]: https://github.com/TC999/AppDataCleaner/blob/master/LICENSE "许可证"
-[license-image]: https://custom-icon-badges.demolab.com/github/license/TC999/AppDataCleaner?style=flat&logo=law&label=%E8%AE%B8%E5%8F%AF%E8%AF%81
+[license-url]: https://github.com/qbiecom/AppDataCleaner/blob/master/LICENSE "License"
+[license-image]: https://custom-icon-badges.demolab.com/github/license/qbiecom/AppDataCleaner?style=flat&logo=law&label=License
 
-[github-doc-gpg-url]: https://docs.github.com/zh/authentication/managing-commit-signature-verification/generating-a-new-gpg-key "GPG签名"
+[github-doc-gpg-url]: https://docs.github.com/zh/authentication/managing-commit-signature-verification/generating-a-new-gpg-key "GPG signing"
