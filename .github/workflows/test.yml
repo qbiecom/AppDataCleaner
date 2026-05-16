@@ -1,4 +1,4 @@
-name: 测试
+name: Test
 
 on:
   push:
@@ -15,7 +15,7 @@ env:
 
 jobs:
   build:
-    name: 测试
+    name: Test
     runs-on: windows-latest
 
     steps:
